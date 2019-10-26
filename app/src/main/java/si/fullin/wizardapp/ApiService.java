@@ -2,7 +2,7 @@ package si.fullin.wizardapp;
 
 import okhttp3.*;
 
-public class SpellService {
+public class ApiService {
 
     private String url = "http://aljaz.erzen.si:9000";
     private static String key = Integer.toString((int) (Math.random() * 1024));
