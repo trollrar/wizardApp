@@ -2,6 +2,7 @@ package si.fullin.wizardapp;
 
 import android.app.Application;
 import android.content.Context;
+import com.microsoft.CloudServices;
 
 public class WizardApp extends Application {
 
@@ -10,6 +11,7 @@ public class WizardApp extends Application {
     public void onCreate() {
         super.onCreate();
         WizardApp.context = getApplicationContext();
+        CloudServices.initialize(this);
     }
 
     public static Context getAppContext() {
