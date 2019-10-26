@@ -1,18 +1,27 @@
 package si.fullin.wizardapp;
+
+import com.hoho.android.usbserial.driver.UsbSerialDriver;
+import com.hoho.android.usbserial.driver.UsbSerialPort;
+import com.hoho.android.usbserial.driver.UsbSerialProber;
+import com.hoho.android.usbserial.util.SerialInputOutputManager;
 import com.physicaloid.lib.Physicaloid;
 import com.physicaloid.lib.usb.driver.uart.ReadLisener;
+
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.os.AsyncTask;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.microsoft.cognitiveservices.speech.CancellationDetails;
 import com.microsoft.cognitiveservices.speech.ResultReason;
@@ -27,6 +36,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -54,7 +64,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String SpeechRegion = "francecentral";
 
     private SpeechConfig speechConfig;
-
+    private static UsbSerialPort sPort = null;
+    private SerialInputOutputManager mSerialIoManager;
+    private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
 
 
     SpellService spellService = new SpellService();
@@ -67,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
     TextView spellText;
 
     private MicrophoneStream microphoneStream;
+
     private MicrophoneStream createMicrophoneStream() {
         if (microphoneStream != null) {
             microphoneStream.close();
@@ -77,62 +90,38 @@ public class MainActivity extends AppCompatActivity {
         return microphoneStream;
     }
 
+    private final SerialInputOutputManager.Listener mListener =
+            new SerialInputOutputManager.Listener() {
+
+                @Override
+                public void onRunError(Exception e) {
+                    Log.d(TAG, "Runner stopped.");
+                }
+
+                @Override
+                public void onNewData(final byte[] data) {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            MainActivity.this.updateReceivedData(data);
+                        }
+                    });
+                }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
-        getDetail();
-
-        mPhysicaloid = new Physicaloid(this);
-        mPhysicaloid.setBaudrate(9600);
-        while (!mPhysicaloid.open());
-            Log.d("UI thread", "openned");
-            textViewMain.setText("opened");
-            mPhysicaloid.addReadListener(new ReadLisener() {
-                private String full="";
-                private Double currentFront = 0d;
-
-            @Override
-            public void onRead(int size) {
-                final byte[] buf = new byte[size];
-                mPhysicaloid.read(buf, size);
-                MainActivity.this.runOnUiThread(new Runnable() {
-                    public void run() {
-                        String msg = new String(buf);
-                        full+=msg;
-                        Log.d("UI thread", full);
-
-
-                        String[] split = full.split("\n");
-                        if(split.length>=2) {
-                            String line = split[split.length - 2];
-                            full = split[split.length - 1];
-                            String[] values = line.split(";");
-                            Map<String, Double> valuesMap = new HashMap<>();
-                            valuesMap.put("acx", Double.valueOf(values[0]));
-                            valuesMap.put("acy", Double.valueOf(values[1]));
-                            valuesMap.put("acz", Double.valueOf(values[2]));
-                            valuesMap.put("temp", Double.valueOf(values[3]));
-                            valuesMap.put("gyrox", Double.valueOf(values[4]));
-                            valuesMap.put("gyroy", Double.valueOf(values[5]));
-                            valuesMap.put("gyroz", Double.valueOf(values[6]));
-                            double acx = Double.valueOf(values[0]);
-                            double acy = Double.valueOf(values[0]);
-                            double acz = Double.valueOf(values[0]);
-                            /*if(acz>1900d && acz < 2500d) {
-                                textViewMain.setText("UP");
-                                currentFront =
-                            }*/
-                           // textViewMain.setText(String.format("acx:%s\nacy: %s\nacz: %s\ntemp: %s\ngyrox: %s\ngyroy: %s\ngyroz: %s", valuesMap.get("acx"), valuesMap.get("acy"), valuesMap.get("acz"), valuesMap.get("temp"), valuesMap.get("gyrox"), valuesMap.get("gyroy"), valuesMap.get("gyroz"))
-                           // );
-                        }
-                    }
-                });
-            }
-        });
-
+       /* getDetail();
+        try {
+            chanelUsb();
+        } catch (IOException e) {
+            textViewMain.setText(e.getMessage());
+            e.printStackTrace();
+        }*/
         //getDetail();
         // Request permissions needed for speech recognition
         ActivityCompat.requestPermissions(MainActivity.this, new String[]{RECORD_AUDIO, INTERNET}, 5);
@@ -147,33 +136,179 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        findPort();
     }
 
-    @OnClick(R.id.ButtonGet)
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopIoManager();
+        if (sPort != null) {
+            try {
+                sPort.close();
+            } catch (IOException e) {
+                // Ignore.
+            }
+            sPort = null;
+        }
+    }
 
+    void findPort() {
+        UsbManager mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+        final List<UsbSerialDriver> drivers =
+                UsbSerialProber.getDefaultProber().findAllDrivers(mUsbManager);
+
+        final List<UsbSerialPort> result = new ArrayList<>();
+        for (final UsbSerialDriver driver : drivers) {
+            final List<UsbSerialPort> ports = driver.getPorts();
+
+            Log.d(TAG, String.format("+ %s: %s port%s",
+                    driver, Integer.valueOf(ports.size()), ports.size() == 1 ? "" : "s"));
+
+            for(UsbSerialPort port : ports) {
+                Toast.makeText(this, "port: " + port.getPortNumber(), Toast.LENGTH_SHORT).show();
+            }
+
+            result.addAll(ports);
+        }
+
+        if(!result.isEmpty()) {
+            sPort = result.get(0);
+            Toast.makeText(this, "port set!", Toast.LENGTH_SHORT).show();
+        }
+
+        portChanged();
+    }
+
+    void portChanged() {
+        if (sPort == null) {
+            textViewMain.setText("No serial device.");
+        } else {
+            final UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+
+            UsbDeviceConnection connection = usbManager.openDevice(sPort.getDriver().getDevice());
+            if (connection == null) {
+                textViewMain.setText("Opening device failed");
+                return;
+            }
+
+            try {
+                sPort.open(connection);
+                sPort.setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+
+                /*showStatus(mDumpTextView, "CD  - Carrier Detect", sPort.getCD());
+                showStatus(mDumpTextView, "CTS - Clear To Send", sPort.getCTS());
+                showStatus(mDumpTextView, "DSR - Data Set Ready", sPort.getDSR());
+                showStatus(mDumpTextView, "DTR - Data Terminal Ready", sPort.getDTR());
+                showStatus(mDumpTextView, "DSR - Data Set Ready", sPort.getDSR());
+                showStatus(mDumpTextView, "RI  - Ring Indicator", sPort.getRI());
+                showStatus(mDumpTextView, "RTS - Request To Send", sPort.getRTS());*/
+
+            } catch (IOException e) {
+                Log.e(TAG, "Error setting up device: " + e.getMessage(), e);
+                textViewMain.setText("Error opening device: " + e.getMessage());
+                try {
+                    sPort.close();
+                } catch (IOException e2) {
+                    // Ignore.
+                }
+                sPort = null;
+                return;
+            }
+            textViewMain.setText("Serial device: " + sPort.getClass().getSimpleName());
+        }
+        onDeviceStateChange();
+    }
+
+    private void stopIoManager() {
+        if (mSerialIoManager != null) {
+            Log.i(TAG, "Stopping io manager ..");
+            mSerialIoManager.stop();
+            mSerialIoManager = null;
+        }
+    }
+
+    private void startIoManager() {
+        if (sPort != null) {
+            Log.i(TAG, "Starting io manager ..");
+            mSerialIoManager = new SerialInputOutputManager(sPort, mListener);
+            mExecutor.submit(mSerialIoManager);
+        }
+    }
+
+    private void onDeviceStateChange() {
+        stopIoManager();
+        startIoManager();
+    }
+
+    /*void chanelUsb() throws IOException {
+        // Find all available drivers from attached devices.
+        UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
+        List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager);
+        if (availableDrivers.isEmpty()) {
+            textViewMain.setText("No drivers");
+            return;
+        }
+
+        // Open a connection to the first available driver.
+        UsbSerialDriver driver = availableDrivers.get(0);
+        final UsbManager usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+        Intent usbApporval = new Intent();
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 1337, usbApporval, 0);
+        usbManager.requestPermission(driver.getDevice(), pendingIntent);
+        UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
+        if (connection == null) {
+            // You probably need to call UsbManager.requestPermission(driver.getDevice(), ..)
+            textViewMain.setText("Conn null");
+            return;
+        }
+
+        // Read some data! Most have just one port (port 0).
+        UsbSerialPort port = driver.getPorts().get(0);
+        try {
+            port.open(connection);
+            port.setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+
+            byte buffer[] = new byte[16];
+            port.read(buffer, 1000);
+            String msg = new String(buffer);
+            textViewMain.setText(textViewMain.getText()+msg);
+
+        } catch (IOException e) {
+            // Deal with error.
+            textViewMain.setText(e.getMessage());
+        } finally {
+            port.close();
+        }
+
+
+    }*/
+
+    @OnClick(R.id.ButtonGet)
     void getSpell() {
         Log.i(TAG, "jej");
-            spellService.getSpell(new Callback() {
-                @Override
-                public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                    e.printStackTrace();
-                    Log.i(TAG, "dej ne faki");
-                }
+        spellService.getSpell(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                e.printStackTrace();
+                Log.i(TAG, "dej ne faki");
+            }
 
-                @Override
-                public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-                    try (ResponseBody responseBody = response.body()) {
-                        if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                try (ResponseBody responseBody = response.body()) {
+                    if (!response.isSuccessful())
+                        throw new IOException("Unexpected code " + response);
 
-                        Headers responseHeaders = response.headers();
-                        for (int i = 0, size = responseHeaders.size(); i < size; i++) {
-                            System.out.println(responseHeaders.name(i) + ": " + responseHeaders.value(i));
-                        }
-
-                        Log.i(TAG, responseBody.string());
+                    Headers responseHeaders = response.headers();
+                    for (int i = 0, size = responseHeaders.size(); i < size; i++) {
+                        System.out.println(responseHeaders.name(i) + ": " + responseHeaders.value(i));
                     }
+
+                    Log.i(TAG, responseBody.string());
                 }
-            });
+            }
+        });
     }
 
     @OnClick(R.id.ButtonPost)
@@ -224,7 +359,7 @@ public class MainActivity extends AppCompatActivity {
                 MainActivity.this.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        ((TextView)MainActivity.this.findViewById(R.id.spellTextView)).setText(finalS);
+                        ((TextView) MainActivity.this.findViewById(R.id.spellTextView)).setText(finalS);
                     }
                 });
 
@@ -235,7 +370,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void getDetail() {
+   /* public void getDetail() {
         String actionString = this.getPackageName() + ".action.USB_PERMISSION";
 
         PendingIntent mPermissionIntent = PendingIntent.getBroadcast(this, 0, new
@@ -258,13 +393,19 @@ public class MainActivity extends AppCompatActivity {
             int Class = device.getDeviceClass();
             int Subclass = device.getDeviceSubclass();
 
-            textViewMain.setText(textViewMain.getText() + "\nid "+ DeviceID + ", vid "+Vendor+",pid "+Product+",class "+Class+",sublcass "+Subclass);
+            textViewMain.setText(textViewMain.getText() + "\nid " + DeviceID + ", vid " + Vendor + ",pid " + Product + ",class " + Class + ",sublcass " + Subclass);
 
-            Log.i("DEVICE", "id "+ DeviceID + ", vid "+Vendor+",pid "+Product+",class "+Class+",sublcass "+Subclass);
+            Log.i("DEVICE", "id " + DeviceID + ", vid " + Vendor + ",pid " + Product + ",class " + Class + ",sublcass " + Subclass);
 
 
         }
+    }*/
+
+    public void updateReceivedData(byte[] data) {
+        final String message = new String(data) + "\n";
+        textViewMain.setText(message);
     }
+
 
     private <T> void setOnTaskCompletedListener(Future<T> task, OnTaskCompletedListener<T> listener) {
         s_executorService.submit(() -> {
@@ -279,6 +420,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static ExecutorService s_executorService;
+
     static {
         s_executorService = Executors.newCachedThreadPool();
     }
@@ -294,7 +436,7 @@ public class MainActivity extends AppCompatActivity {
         spellTypes.add(res.getStringArray(R.array.plant_def));
 
         String normalize = query.toLowerCase().replaceAll("( |[.])", "");
-        for (String[] spellType: spellTypes) {
+        for (String[] spellType : spellTypes) {
             for (int i = 1; i < spellType.length; i++) {
                 if (spellType[i].equals(normalize)) {
                     return spellType[0];

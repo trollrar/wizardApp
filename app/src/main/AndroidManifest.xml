@@ -19,6 +19,9 @@
     <uses-feature android:name="android.software.vr.mode" android:required="false"/>
     <uses-feature android:name="android.hardware.vr.high_performance" android:required="false"/>
 
+    <!-- Arduino USB -->
+    <uses-feature android:name="android.hardware.usb.host" />
+
     <application
         android:name="si.fullin.wizardapp.WizardApp"
         android:allowBackup="true"
@@ -31,9 +34,14 @@
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
         </activity>
 
         <activity
@@ -44,10 +52,8 @@
                 android:resizeableActivity="false"
                 android:configChanges="density|keyboardHidden|navigation|orientation|screenSize|uiMode"
                 android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+
+
         </activity>
     </application>
 
