@@ -1,3 +1,33 @@
 <resources>
     <string name="app_name">wizardApp</string>
+    <string-array name="fire_atk">
+        <item>Ferocious Flames</item>
+        <item>ferociousflames</item>
+    </string-array>
+    <string-array name="fire_def">
+        <item>Sulfurous Smoke</item>
+        <item>sulfuroussmoke</item>
+        <item>soforasmoke</item>
+    </string-array>
+    <string-array name="water_atk">
+        <item>Wrath of Waterfall</item>
+        <item>wrathofwaterfall</item>
+        <item>roughofwaterfall</item>
+        <item>graphofwaterfall</item>
+        <item>refofwaterfall</item>
+        <item>graphofwaterfall</item>
+    </string-array>
+    <string-array name="water_def">
+        <item>Mysterious Mist</item>
+        <item>mysteriousmist</item>
+        <item>mysteriousmissed</item>
+    </string-array>
+    <string-array name="plant_atk">
+        <item>Revengefull Roses</item>
+        <item>revengefullroses</item>
+    </string-array>
+    <string-array name="plant_def">
+        <item>Fierce Forest</item>
+        <item>fierceforest</item>
+    </string-array>
 </resources>
