@@ -3,6 +3,7 @@ package si.fullin.wizardapp;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
@@ -29,11 +30,12 @@ import si.fullin.wizardapp.ar.SceneLoader;
 import java.util.HashMap;
 import java.util.Map;
 
-public class VRActivity extends AppCompatActivity {
+public class VRActivity extends AppCompatActivity implements WandService.OnSpellCast {
     private static final String TAG = VRActivity.class.getSimpleName();
 
     private static final double MIN_OPENGL_VERSION = 3.0;
 
+    WandService wandService;
     private ArFragment arFragment;
     ImageView imageView;
     SceneLoader sceneLoader = new SceneLoader();
@@ -70,6 +72,7 @@ public class VRActivity extends AppCompatActivity {
                 .thenAccept(material -> colorGreen = material);
 
 
+        wandService = new WandService(this, this, true);
         sceneLoader.onCreate(this, arFragment);
         initOnTap();
 
@@ -85,12 +88,12 @@ public class VRActivity extends AppCompatActivity {
         }, 2000);
 
         new Handler().postDelayed(() -> showSpellAtLastTappedAnchor(colorGreen), 10000);
-        new Handler().postDelayed(this::showDamageOverlay, 15000);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        wandService.onResume();
 
         Map<String, Integer> initialScene = new HashMap<>();
         initialScene.put("d9b2a566-bb12-42e7-8063-d84144871e66", R.raw.andy);
@@ -99,6 +102,12 @@ public class VRActivity extends AppCompatActivity {
         initialScene.put("2b1e6c9e-ba66-4d0f-89ec-6f9a3beb7352", R.raw.pumpkin);
 
         sceneLoader.locateObjects(initialScene);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        wandService.onPause();
     }
 
     @Override
@@ -139,34 +148,37 @@ public class VRActivity extends AppCompatActivity {
     void showDamageOverlay() {
         View damageOverlay = findViewById(R.id.damageOverlay);
 
-        damageOverlay.setVisibility(View.VISIBLE);
-        damageOverlay.setAlpha(1);
+        runOnUiThread(() -> {
+            damageOverlay.setVisibility(View.VISIBLE);
+            damageOverlay.setAlpha(1);
 
-        Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
-            final int ALL_STEPS = 75;
-            int stepsRemaining = ALL_STEPS;
 
-            @Override
-            public void run() {
-                stepsRemaining--;
+            Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                final int ALL_STEPS = 75;
+                int stepsRemaining = ALL_STEPS;
 
-                VRActivity.this.runOnUiThread(() -> {
-                    if (stepsRemaining == 0) {
-                        damageOverlay.setVisibility(View.GONE);
-                    } else {
+                @Override
+                public void run() {
+                    stepsRemaining--;
 
-                        float x = (float) stepsRemaining / ALL_STEPS * 0.3f;
-                        float alpha = (float) Math.pow((1.0 - x) * Math.sin(Math.PI * (1.0 - x) / 0.59), 0.85);
+                    VRActivity.this.runOnUiThread(() -> {
+                        if (stepsRemaining == 0) {
+                            damageOverlay.setVisibility(View.GONE);
+                        } else {
 
-                        damageOverlay.setAlpha(alpha);
-                    }
-                });
+                            float x = (float) stepsRemaining / ALL_STEPS;
+                            float alpha = (float) Math.pow(x * Math.sin(Math.PI * x) / 0.59, 0.85);
 
-                if (stepsRemaining > 0)
-                    handler.postDelayed(this, 15);
-            }
-        }, 15);
+                            damageOverlay.setAlpha(alpha);
+                        }
+                    });
+
+                    if (stepsRemaining > 0)
+                        handler.postDelayed(this, 15);
+                }
+            }, 15);
+        });
     }
 
     void showSpellAtLastTappedAnchor(Material color) {
@@ -250,5 +262,31 @@ public class VRActivity extends AppCompatActivity {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public void spellCast(boolean me, String spellName) {
+        if (me) {
+
+            Material color = getAttackColor(spellName);
+
+            if (color != null) {
+                showSpellAtLastTappedAnchor(color);
+            }
+//            else {`
+            // TODO defensive spell
+//            }
+        } else {
+            Log.d("spell", "showing damage");
+            showDamageOverlay();
+        }
+    }
+
+    public Material getAttackColor(String spell) {
+        Resources res = WizardApp.getAppContext().getResources();
+        if (spell.equals(res.getStringArray(R.array.fire_atk)[1])) return colorRed;
+        if (spell.equals(res.getStringArray(R.array.water_atk)[1])) return colorBlue;
+        if (spell.equals(res.getStringArray(R.array.plant_atk)[1])) return colorGreen;
+        return null;
     }
 }
