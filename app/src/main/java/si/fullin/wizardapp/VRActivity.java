@@ -8,10 +8,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.PixelCopy;
 import android.view.SurfaceView;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 import com.google.ar.core.Anchor;
@@ -19,7 +19,8 @@ import com.google.ar.core.ArCoreApk;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 import com.google.ar.sceneform.AnchorNode;
-import com.google.ar.sceneform.rendering.ModelRenderable;
+import com.google.ar.sceneform.math.Vector3;
+import com.google.ar.sceneform.rendering.*;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
 import com.microsoft.CloudServices;
@@ -36,6 +37,10 @@ public class VRActivity extends AppCompatActivity {
     private ArFragment arFragment;
     ImageView imageView;
     SceneLoader sceneLoader = new SceneLoader();
+
+    Material colorBlue;
+    Material colorRed;
+    Material colorGreen;
 
     @Override
     @SuppressWarnings({"AndroidApiChecker", "FutureReturnValueIgnored"})
@@ -55,10 +60,21 @@ public class VRActivity extends AppCompatActivity {
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ar_fragment);
         imageView = this.findViewById(R.id.myimage);
 
-        sceneLoader.onCreate(this, arFragment);
-//        init();
-        onTapPlace();
+        // init material colors
 
+        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.RED))
+                .thenAccept(material -> colorRed = material);
+        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.BLUE))
+                .thenAccept(material -> colorBlue = material);
+        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.GREEN))
+                .thenAccept(material -> colorGreen = material);
+
+
+        sceneLoader.onCreate(this, arFragment);
+        initOnTap();
+
+
+        // init VR faker
         Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
             @Override
@@ -67,6 +83,9 @@ public class VRActivity extends AppCompatActivity {
                 handler.postDelayed(this, 42);
             }
         }, 2000);
+
+        new Handler().postDelayed(() -> showSpellAtLastTappedAnchor(colorGreen), 10000);
+        new Handler().postDelayed(this::showDamageOverlay, 15000);
     }
 
     @Override
@@ -96,7 +115,7 @@ public class VRActivity extends AppCompatActivity {
 
         SurfaceView surfaceview = arFragment.getArSceneView();
 
-        if(surfaceview.getWidth() <= 0 || surfaceview.getHeight() <= 0)
+        if (surfaceview.getWidth() <= 0 || surfaceview.getHeight() <= 0)
             return;
 
         Bitmap plotBitmap = Bitmap.createBitmap(surfaceview.getWidth(), surfaceview.getHeight(), Bitmap.Config.ARGB_8888);
@@ -106,41 +125,101 @@ public class VRActivity extends AppCompatActivity {
         imageView.setImageBitmap(plotBitmap);
     }
 
-    void onTapPlace() {
+    private Anchor lastTappedAnchorNode = null;
 
-        final ModelRenderable[] renderable = new ModelRenderable[1];
-
-        ModelRenderable.builder()
-                .setSource(this, R.raw.dragon_big)
-                .build()
-                .thenAccept(r -> renderable[0] = r)
-                .exceptionally(
-                        throwable -> {
-                            Toast toast =
-                                    Toast.makeText(this, "Unable to load andy renderable", Toast.LENGTH_LONG);
-                            toast.setGravity(Gravity.CENTER, 0, 0);
-                            toast.show();
-                            return null;
-                        });
-
+    void initOnTap() {
         arFragment.setOnTapArPlaneListener(
                 (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
-                    if (renderable[0] == null) {
-                        return;
+                    lastTappedAnchorNode = hitResult.createAnchor();
+
+                    showSpellAtLastTappedAnchor(colorGreen);
+                });
+    }
+
+    void showDamageOverlay() {
+        View damageOverlay = findViewById(R.id.damageOverlay);
+
+        damageOverlay.setVisibility(View.VISIBLE);
+        damageOverlay.setAlpha(1);
+
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            final int ALL_STEPS = 75;
+            int stepsRemaining = ALL_STEPS;
+
+            @Override
+            public void run() {
+                stepsRemaining--;
+
+                VRActivity.this.runOnUiThread(() -> {
+                    if (stepsRemaining == 0) {
+                        damageOverlay.setVisibility(View.GONE);
+                    } else {
+
+                        float x = (float) stepsRemaining / ALL_STEPS * 0.3f;
+                        float alpha = (float) Math.pow((1.0 - x) * Math.sin(Math.PI * (1.0 - x) / 0.59), 0.85);
+
+                        damageOverlay.setAlpha(alpha);
                     }
-
-                    // Create the Anchor.
-                    Anchor anchor = hitResult.createAnchor();
-                    AnchorNode anchorNode = new AnchorNode(anchor);
-                    anchorNode.setParent(arFragment.getArSceneView().getScene());
-
-                    // Create the transformable andy and add it to the anchor.
-                    TransformableNode andy = new TransformableNode(arFragment.getTransformationSystem());
-                    andy.setParent(anchorNode);
-                    andy.setRenderable(renderable[0]);
-                    andy.select();
                 });
 
+                if (stepsRemaining > 0)
+                    handler.postDelayed(this, 15);
+            }
+        }, 15);
+    }
+
+    void showSpellAtLastTappedAnchor(Material color) {
+        if (lastTappedAnchorNode == null)
+            return;
+
+        AnchorNode anchorNode = new AnchorNode(lastTappedAnchorNode);
+
+        runOnUiThread(() -> anchorNode.setParent(arFragment.getArSceneView().getScene()));
+
+//        final Renderable[] renderable = new Renderable[1];
+//        ModelRenderable.builder()
+//                .setSource(this, R.raw.arzeninball)
+//                .build()
+//                .thenAccept(r -> renderable[0] = r)
+//                .exceptionally(throwable -> null);
+
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            final int ALL_STEPS = 50;
+            int stepsRemaining = ALL_STEPS;
+            TransformableNode sphere = null;
+
+            @Override
+            public void run() {
+                stepsRemaining--;
+
+                VRActivity.this.runOnUiThread(() -> {
+                    if (sphere != null) {
+                        anchorNode.removeChild(sphere);
+                    }
+
+                    if (stepsRemaining == 0) {
+                        arFragment.getArSceneView().getScene().removeChild(anchorNode);
+                    } else {
+
+                        float radius = (float) stepsRemaining / ALL_STEPS * 0.3f;
+
+                        Renderable renderable = ShapeFactory.makeSphere(radius, new Vector3(0.0f, 0.5f, 0.0f), color);
+                        sphere = new TransformableNode(arFragment.getTransformationSystem());
+                        sphere.setParent(anchorNode);
+                        sphere.setRenderable(renderable);
+//                        sphere.setRenderable(renderable[0]);
+                        sphere.select();
+
+
+                    }
+                });
+
+                if (stepsRemaining > 0)
+                    handler.postDelayed(this, 100);
+            }
+        }, 0);
     }
 
     /**

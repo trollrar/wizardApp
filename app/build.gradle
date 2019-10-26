@@ -73,3 +73,8 @@ sceneform.asset('sampledata/models/andy.obj',
         'default',
         'sampledata/models/andy.sfa',
         'src/main/res/raw/andy')
+
+sceneform.asset('sampledata/models/arzeninball.fbx',
+        'default',
+        'sampledata/models/arzeninball.sfa',
+        'src/main/res/raw/arzeninball')
