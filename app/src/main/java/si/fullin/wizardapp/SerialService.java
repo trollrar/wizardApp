@@ -117,7 +117,6 @@ public class SerialService extends Service implements SerialListener {
 
     public void detach() {
         if(connected)
-            createNotification();
         // items already in event queue (posted before detach() to mainLooper) will end up in queue1
         // items occurring later, will be moved directly to queue2
         // detach() and mainLooper.post run in the main thread, so all items are caught
