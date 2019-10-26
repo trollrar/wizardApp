@@ -16,17 +16,15 @@ public class WandService implements UsbSerialService.OnDataRecieved {
     SpeechService speechService;
     ApiService apiService = new ApiService();
 
-    boolean enablePinger;
-
     public WandService(Activity activity, OnSpellCast onSpellCastListener, boolean enablePinger) {
         this.activity = activity;
         this.onSpellCastListener = onSpellCastListener;
-        this.enablePinger = enablePinger;
 
         usbSerialService = new UsbSerialService(activity, this);
         speechService = new SpeechService(activity);
 
-        initApiPinger();
+        if (enablePinger)
+            initApiPinger();
     }
 
     public void onPause() {

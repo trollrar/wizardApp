@@ -9,10 +9,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.MotionEvent;
-import android.view.PixelCopy;
-import android.view.SurfaceView;
-import android.view.View;
+import android.view.*;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.Toast;
 import com.google.ar.core.Anchor;
@@ -20,6 +18,7 @@ import com.google.ar.core.ArCoreApk;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
 import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.*;
 import com.google.ar.sceneform.ux.ArFragment;
@@ -34,6 +33,9 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
     private static final String TAG = VRActivity.class.getSimpleName();
 
     private static final double MIN_OPENGL_VERSION = 3.0;
+
+    private int MAX_HEALTH = 10;
+    private int health = MAX_HEALTH;
 
     WandService wandService;
     private ArFragment arFragment;
@@ -148,37 +150,35 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
     void showDamageOverlay() {
         View damageOverlay = findViewById(R.id.damageOverlay);
 
-        runOnUiThread(() -> {
-            damageOverlay.setVisibility(View.VISIBLE);
-            damageOverlay.setAlpha(1);
+        damageOverlay.setVisibility(View.VISIBLE);
+        damageOverlay.setAlpha(1);
 
 
-            Handler handler = new Handler();
-            handler.postDelayed(new Runnable() {
-                final int ALL_STEPS = 75;
-                int stepsRemaining = ALL_STEPS;
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            final int ALL_STEPS = 75;
+            int stepsRemaining = ALL_STEPS;
 
-                @Override
-                public void run() {
-                    stepsRemaining--;
+            @Override
+            public void run() {
+                stepsRemaining--;
 
-                    VRActivity.this.runOnUiThread(() -> {
-                        if (stepsRemaining == 0) {
-                            damageOverlay.setVisibility(View.GONE);
-                        } else {
+                VRActivity.this.runOnUiThread(() -> {
+                    if (stepsRemaining == 0) {
+                        damageOverlay.setVisibility(View.GONE);
+                    } else {
 
-                            float x = (float) stepsRemaining / ALL_STEPS;
-                            float alpha = (float) Math.pow(x * Math.sin(Math.PI * x) / 0.59, 0.85);
+                        float x = (float) stepsRemaining / ALL_STEPS;
+                        float alpha = (float) Math.pow(x * Math.sin(Math.PI * x) / 0.59, 0.85);
 
-                            damageOverlay.setAlpha(alpha);
-                        }
-                    });
+                        damageOverlay.setAlpha(alpha);
+                    }
+                });
 
-                    if (stepsRemaining > 0)
-                        handler.postDelayed(this, 15);
-                }
-            }, 15);
-        });
+                if (stepsRemaining > 0)
+                    handler.postDelayed(this, 15);
+            }
+        }, 15);
     }
 
     void showSpellAtLastTappedAnchor(Material color) {
@@ -234,6 +234,16 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         }, 0);
     }
 
+    void updateHealthBar() {
+        int parentWidth = ((FrameLayout) findViewById(R.id.health1).getParent()).getWidth();
+
+        float percent = (float) health / MAX_HEALTH;
+        int width = (int) (percent * parentWidth);
+
+        findViewById(R.id.health1).setLayoutParams(new FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT));
+        findViewById(R.id.health2).setLayoutParams(new FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
     /**
      * Returns false and displays an error message if Sceneform can not run, true if Sceneform can run
      * on this device.
@@ -278,7 +288,13 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
 //            }
         } else {
             Log.d("spell", "showing damage");
-            showDamageOverlay();
+
+            runOnUiThread(() -> {
+                health--;
+                updateHealthBar();
+
+                showDamageOverlay();
+            });
         }
     }
 
