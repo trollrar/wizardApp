@@ -43,6 +43,39 @@
 
     <LinearLayout
             android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:translationZ="9dp"
+            android:layout_marginTop="25dp"
+            android:orientation="horizontal">
+
+        <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1">
+
+            <View android:layout_width="30dp"
+                  android:layout_height="30dp"
+                  android:layout_marginStart="5dp"
+                  android:background="@android:color/holo_green_dark"
+                  android:id="@+id/status1"/>
+        </FrameLayout>
+
+        <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1">
+
+            <View android:layout_width="30dp"
+                  android:layout_height="30dp"
+                  android:layout_marginStart="5dp"
+                  android:background="@android:color/holo_green_dark"
+                  android:id="@+id/status2"/>
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="horizontal">
 
