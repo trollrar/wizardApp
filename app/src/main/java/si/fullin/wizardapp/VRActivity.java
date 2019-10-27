@@ -215,7 +215,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
 
         Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
-            final int ALL_STEPS = 20;
+            final int ALL_STEPS = 60;
             int stepsRemaining = ALL_STEPS;
             TransformableNode sphere = null;
 
@@ -275,7 +275,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
 
             Handler handler = new Handler();
             handler.postDelayed(new Runnable() {
-                final int ALL_STEPS = 20;
+                final int ALL_STEPS = 60;
                 int stepsRemaining = ALL_STEPS;
                 TransformableNode sphere = null;
 
