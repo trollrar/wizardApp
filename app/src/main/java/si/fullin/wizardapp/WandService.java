@@ -119,7 +119,6 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                         });
 
                         onSpellCastListener.spellStatus(SpellResult.START);
-                        toast("listening...");
                     }
 
                 }

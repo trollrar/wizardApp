@@ -394,7 +394,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         if (moving) {
             movingSpell(anchorNode, resource, amICaster, callback);
         } else {
-            staticSpell(anchorNode, resource, callback);
+            staticSpell(anchorNode, resource, amICaster, callback);
         }
     }
 
@@ -476,8 +476,8 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
 
         switch (result) {
             case START:
-                findViewById(R.id.status2).setBackgroundResource(android.R.color.transparent);
-                findViewById(R.id.status1).setBackgroundResource(android.R.color.transparent);
+                findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_purple);
+                findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_purple);
                 break;
 
             case SPEECH_RECOGNISED:

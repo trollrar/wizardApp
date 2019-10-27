@@ -21,6 +21,7 @@
     </string-array>
     <string-array name="plant_moving">
         <item>revengefullroses</item>
+        <item>revengefulroses</item>
     </string-array>
     <string-array name="plant_static">
         <item>fierceforest</item>
