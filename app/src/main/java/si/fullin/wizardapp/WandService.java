@@ -108,7 +108,7 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                                     Toast.makeText(activity, "Failed up", Toast.LENGTH_SHORT).show()
                             );*/
                         }
-                        if (timerCounter > 500 && startTimerStarted) {
+                        if (timerCounter > 100 && startTimerStarted) {
                             // Start logging gestures.
                             startTimerStarted = false;
                             timerCounter = 0;
@@ -119,6 +119,7 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                             );*/
                         }
                     }
+
                     if(logging) {
                         measurments.add(measurment);
                     }
@@ -143,7 +144,7 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                             timerCounter = 0;
                         }
 
-                        if (timerCounter > 500 && stopTimerStarted) {
+                        if (timerCounter > 100 && stopTimerStarted) {
                             // stop logging gestures.
                             stopTimerStarted = false;
                             timerCounter = 0;
@@ -161,7 +162,7 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                     activity.runOnUiThread(() ->
                             {
                                 TextView viewById = (TextView) activity.findViewById(R.id.textViewMain);
-                                viewById.setText("start " + startTimerStarted + "\nstop " + stopTimerStarted + "\nlogging " + logging);
+                                viewById.setText("start " + startTimerStarted + " " + timerCounter + "\nstop " + stopTimerStarted + "\nlogging " + logging);
                             }
                     );
                 }
