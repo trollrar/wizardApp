@@ -5,6 +5,7 @@ import android.content.res.Resources;
 import android.os.Handler;
 import android.widget.TextView;
 import android.widget.Toast;
+import org.jetbrains.annotations.NotNull;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -14,17 +15,17 @@ import java.util.ArrayList;
  */
 public class WandService implements UsbSerialService.OnDataRecieved {
 
-    Activity activity;
-    OnSpellCast onSpellCastListener;
+    private Activity activity;
+    private OnSpellCast onSpellCastListener;
 
-    UsbSerialService usbSerialService;
-    SpeechService speechService;
-    ApiService apiService = new ApiService();
+    private UsbSerialService usbSerialService;
+    private SpeechService speechService;
+    private ApiService apiService = new ApiService();
 
 
-    ArrayList<Measurment> measurments = new ArrayList<>();
+    private ArrayList<Measurment> measurments = new ArrayList<>();
 
-    public WandService(Activity activity, OnSpellCast onSpellCastListener, boolean enablePinger) {
+    WandService(Activity activity, OnSpellCast onSpellCastListener, boolean enablePinger) {
         this.activity = activity;
         this.onSpellCastListener = onSpellCastListener;
 
@@ -35,11 +36,11 @@ public class WandService implements UsbSerialService.OnDataRecieved {
             initApiPinger();
     }
 
-    public void onPause() {
+    void onPause() {
         usbSerialService.disconnect();
     }
 
-    public void onResume() {
+    void onResume() {
         usbSerialService.connect();
     }
 
@@ -114,7 +115,7 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                         firstTimeSpell = false;
                         speechService.listenForSpell(spellName -> {
                             this.spellName = spellName;
-                            if(spellName != null)
+                            if (spellName != null)
                                 onSpellCastListener.spellStatus(SpellResult.SPEECH_RECOGNISED);
                         });
 
@@ -161,7 +162,7 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                                     if (spellName.equals(res.getStringArray(R.array.fire_moving)[0])) {
                                         if (measurments.stream().anyMatch(x -> x.x > 13000)
                                                 && measurments.stream().allMatch(y -> y.y < 13000)) {
-                                            onSpellCastListener.spellCast(true, spellName);
+                                            castSpell(spellName);
                                         } else {
                                             onSpellCastListener.spellStatus(SpellResult.WAND_FAILED);
                                         }
@@ -170,7 +171,7 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                                     } else if (spellName.equals(res.getStringArray(R.array.water_static)[0])) {
                                         if (measurments.stream().anyMatch(x -> x.y > 13000)
                                                 && measurments.stream().allMatch(y -> y.x < 13000)) {
-                                            onSpellCastListener.spellCast(true, spellName);
+                                            castSpell(spellName);
                                         } else {
                                             onSpellCastListener.spellStatus(SpellResult.WAND_FAILED);
                                         }
@@ -179,12 +180,12 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                                     } else if (spellName.equals(res.getStringArray(R.array.plant_moving)[0])) {
                                         if (measurments.stream().anyMatch(x -> x.y > 13000)
                                                 && measurments.stream().anyMatch(y -> y.x > 13000)) {
-                                            onSpellCastListener.spellCast(true, spellName);
+                                            castSpell(spellName);
                                         } else {
                                             onSpellCastListener.spellStatus(SpellResult.WAND_FAILED);
                                         }
                                     } else {
-                                        onSpellCastListener.spellCast(true, spellName);
+                                        castSpell(spellName);
                                         toast("spell checking not implemented");
                                     }
                                 }
@@ -196,6 +197,11 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                 }
             }
         }
+    }
+
+    private void castSpell(String spellName) {
+        onSpellCastListener.spellCast(true, spellName);
+        apiService.postSpell(spellName);
     }
 
     private void toast(String text) {
@@ -214,13 +220,14 @@ public class WandService implements UsbSerialService.OnDataRecieved {
         public double y;
         public double z;
 
-        public Measurment(double x, double y, double z) {
+        Measurment(double x, double y, double z) {
             this.x = x;
             this.y = y;
             this.z = z;
         }
 
 
+        @NotNull
         @Override
         public String toString() {
             return "{" +
