@@ -16,9 +16,12 @@ import android.widget.ImageView;
 import android.widget.Toast;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.ArCoreApk;
+import com.google.ar.core.Frame;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
+import com.google.ar.core.Pose;
 import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.*;
 import com.google.ar.sceneform.ux.ArFragment;
@@ -177,16 +180,27 @@ public class VRActivity extends AppCompatActivity {
 
         runOnUiThread(() -> anchorNode.setParent(arFragment.getArSceneView().getScene()));
 
-//        final Renderable[] renderable = new Renderable[1];
-//        ModelRenderable.builder()
-//                .setSource(this, R.raw.arzeninball)
-//                .build()
-//                .thenAccept(r -> renderable[0] = r)
-//                .exceptionally(throwable -> null);
+        final Renderable[] renderable = new Renderable[1];
+        ModelRenderable.builder()
+                .setSource(this, R.raw.arzeninball)
+                .build()
+                .thenAccept(r -> renderable[0] = r)
+                .exceptionally(throwable -> null);
+
+        Frame frame = arFragment.getArSceneView().getArFrame();
+        Pose objectPose = lastTappedAnchorNode.getPose();
+        Pose cameraPose = frame.getCamera().getPose();
+
+        float dx = objectPose.tx() - cameraPose.tx();
+        float dy = objectPose.ty() - cameraPose.ty();
+        float dz = objectPose.tz() - cameraPose.tz();
+
+        ///Compute the straight-line distance.
+        float distanceMeters = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
 
         Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
-            final int ALL_STEPS = 50;
+            final int ALL_STEPS = 20;
             int stepsRemaining = ALL_STEPS;
             TransformableNode sphere = null;
 
@@ -204,12 +218,25 @@ public class VRActivity extends AppCompatActivity {
                     } else {
 
                         float radius = (float) stepsRemaining / ALL_STEPS * 0.3f;
+                        float distance = distanceMeters * ((float) stepsRemaining / ALL_STEPS);
 
-                        Renderable renderable = ShapeFactory.makeSphere(radius, new Vector3(0.0f, 0.5f, 0.0f), color);
+
+                        //Renderable renderable = ShapeFactory.makeSphere(radius, new Vector3(0.0f, 0.5f, 0.0f), color);
                         sphere = new TransformableNode(arFragment.getTransformationSystem());
+                        sphere.getScaleController().setMaxScale(0.25f);
+                        sphere.getScaleController().setMinScale(0.2f);
+                        Vector3 vector3 = sphere.getWorldPosition();
+                        Quaternion rotation = sphere.getWorldRotation();
+                        rotation.y = 180;
+                        vector3.z = (distance)-1;
+                        vector3.y = 0.4f;
+                        sphere.setWorldPosition(vector3);
+                        sphere.setWorldRotation(rotation);
+                        Log.i(TAG, String.valueOf(rotation.y));
+                        Log.i(TAG, String.valueOf(vector3.z));
                         sphere.setParent(anchorNode);
-                        sphere.setRenderable(renderable);
-//                        sphere.setRenderable(renderable[0]);
+                        //sphere.setRenderable(renderable);
+                        sphere.setRenderable(renderable[0]);
                         sphere.select();
 
 
@@ -217,7 +244,7 @@ public class VRActivity extends AppCompatActivity {
                 });
 
                 if (stepsRemaining > 0)
-                    handler.postDelayed(this, 100);
+                    handler.postDelayed(this, 40);
             }
         }, 0);
     }
