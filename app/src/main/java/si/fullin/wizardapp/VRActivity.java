@@ -98,11 +98,11 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         wandService.onResume();
 
         Map<String, Integer> initialScene = new HashMap<>();
-        initialScene.put("01e6d8ad-665f-429a-989e-f837331f5b46", R.raw.pumpkin);
-        initialScene.put("172150e8-6305-43a4-8a31-6a9a40426fc2", R.raw.pumpkin);
-        initialScene.put("ed8ee00b-6efd-4971-9aed-9bd24987ea7f", R.raw.dragon);
-        initialScene.put("f1d4144f-e0f8-4622-847b-1a6b709b56f1", R.raw.andy);
-        initialScene.put("9fb68a63-c511-486d-a93b-cd96d21fef5e", R.raw.pumpkin);
+        initialScene.put("6ef478f4-07e1-4c9f-bd11-285918ab344a", R.raw.dragon);
+        initialScene.put("cc446848-7910-4ca3-837b-3b429db49c0a", R.raw.pumpkin);
+        initialScene.put("7479f39e-0e29-460a-ae27-7f12bb22d1e4", R.raw.pumpkin);
+        initialScene.put("28970a09-c09b-40f1-b93c-6629edd8dc85", R.raw.pumpkin);
+        initialScene.put("f201f3ec-4cd8-4c23-a316-35117082abe9", R.raw.andy);
 
         sceneLoader.locateObjects(initialScene);
     }
@@ -493,6 +493,11 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
             case SPEECH_FAILED:
                 findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_orange_dark);
                 findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_orange_dark);
+                return;
+
+            case SUCESSFUL:
+                findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_green_dark);
+                findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_green_dark);
                 return;
         }
 

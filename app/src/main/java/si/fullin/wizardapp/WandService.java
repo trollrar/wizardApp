@@ -201,6 +201,7 @@ public class WandService implements UsbSerialService.OnDataRecieved {
 
     private void castSpell(String spellName) {
         onSpellCastListener.spellCast(true, spellName);
+        onSpellCastListener.spellStatus(SpellResult.SUCESSFUL);
         apiService.postSpell(spellName);
     }
 
@@ -239,6 +240,6 @@ public class WandService implements UsbSerialService.OnDataRecieved {
     }
 
     public enum SpellResult {
-        WAND_FAILED, SPEECH_FAILED, START, SPEECH_RECOGNISED
+        WAND_FAILED, SPEECH_FAILED, START, SPEECH_RECOGNISED, SUCESSFUL
     }
 }
