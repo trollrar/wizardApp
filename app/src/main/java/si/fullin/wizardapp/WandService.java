@@ -1,6 +1,7 @@
 package si.fullin.wizardapp;
 
 import android.app.Activity;
+import android.os.Handler;
 import android.widget.Toast;
 
 /**
@@ -13,13 +14,17 @@ public class WandService implements UsbSerialService.OnDataRecieved {
 
     UsbSerialService usbSerialService;
     SpeechService speechService;
+    ApiService apiService = new ApiService();
 
-    public WandService(Activity activity, OnSpellCast onSpellCastListener) {
+    public WandService(Activity activity, OnSpellCast onSpellCastListener, boolean enablePinger) {
         this.activity = activity;
         this.onSpellCastListener = onSpellCastListener;
 
         usbSerialService = new UsbSerialService(activity, this);
         speechService = new SpeechService(activity);
+
+        if (enablePinger)
+            initApiPinger();
     }
 
     public void onPause() {
@@ -28,6 +33,24 @@ public class WandService implements UsbSerialService.OnDataRecieved {
 
     public void onResume() {
         usbSerialService.connect();
+    }
+
+    private void initApiPinger() {
+        final int API_PING_INTERVAL = 1000;
+
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                apiService.getStatus(spellName -> {
+                    if (spellName != null)
+                        onSpellCastListener.spellCast(false, spellName);
+                });
+
+                handler.postDelayed(this, API_PING_INTERVAL);
+            }
+        }, API_PING_INTERVAL);
+
     }
 
     @Override

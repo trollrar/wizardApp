@@ -3,15 +3,14 @@ package si.fullin.wizardapp;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.MotionEvent;
-import android.view.PixelCopy;
-import android.view.SurfaceView;
-import android.view.View;
+import android.view.*;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.Toast;
 import com.google.ar.core.Anchor;
@@ -22,6 +21,7 @@ import com.google.ar.core.Plane;
 import com.google.ar.core.Pose;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.math.Quaternion;
+import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.*;
 import com.google.ar.sceneform.ux.ArFragment;
@@ -32,11 +32,15 @@ import si.fullin.wizardapp.ar.SceneLoader;
 import java.util.HashMap;
 import java.util.Map;
 
-public class VRActivity extends AppCompatActivity {
+public class VRActivity extends AppCompatActivity implements WandService.OnSpellCast {
     private static final String TAG = VRActivity.class.getSimpleName();
 
     private static final double MIN_OPENGL_VERSION = 3.0;
 
+    private int MAX_HEALTH = 10;
+    private int health = MAX_HEALTH;
+
+    WandService wandService;
     private ArFragment arFragment;
     ImageView imageView;
     SceneLoader sceneLoader = new SceneLoader();
@@ -73,6 +77,7 @@ public class VRActivity extends AppCompatActivity {
                 .thenAccept(material -> colorGreen = material);
 
 
+        wandService = new WandService(this, this, true);
         sceneLoader.onCreate(this, arFragment);
         initOnTap();
 
@@ -88,12 +93,12 @@ public class VRActivity extends AppCompatActivity {
         }, 2000);
 
         new Handler().postDelayed(() -> showSpellAtLastTappedAnchor(colorGreen), 10000);
-        new Handler().postDelayed(this::showDamageOverlay, 15000);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        wandService.onResume();
 
         Map<String, Integer> initialScene = new HashMap<>();
         initialScene.put("d9b2a566-bb12-42e7-8063-d84144871e66", R.raw.andy);
@@ -102,6 +107,12 @@ public class VRActivity extends AppCompatActivity {
         initialScene.put("2b1e6c9e-ba66-4d0f-89ec-6f9a3beb7352", R.raw.pumpkin);
 
         sceneLoader.locateObjects(initialScene);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        wandService.onPause();
     }
 
     @Override
@@ -145,6 +156,7 @@ public class VRActivity extends AppCompatActivity {
         damageOverlay.setVisibility(View.VISIBLE);
         damageOverlay.setAlpha(1);
 
+
         Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
             final int ALL_STEPS = 75;
@@ -159,8 +171,8 @@ public class VRActivity extends AppCompatActivity {
                         damageOverlay.setVisibility(View.GONE);
                     } else {
 
-                        float x = (float) stepsRemaining / ALL_STEPS * 0.3f;
-                        float alpha = (float) Math.pow((1.0 - x) * Math.sin(Math.PI * (1.0 - x) / 0.59), 0.85);
+                        float x = (float) stepsRemaining / ALL_STEPS;
+                        float alpha = (float) Math.pow(x * Math.sin(Math.PI * x) / 0.59, 0.85);
 
                         damageOverlay.setAlpha(alpha);
                     }
@@ -249,6 +261,16 @@ public class VRActivity extends AppCompatActivity {
         }, 0);
     }
 
+    void updateHealthBar() {
+        int parentWidth = ((FrameLayout) findViewById(R.id.health1).getParent()).getWidth();
+
+        float percent = (float) health / MAX_HEALTH;
+        int width = (int) (percent * parentWidth);
+
+        findViewById(R.id.health1).setLayoutParams(new FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT));
+        findViewById(R.id.health2).setLayoutParams(new FrameLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
     /**
      * Returns false and displays an error message if Sceneform can not run, true if Sceneform can run
      * on this device.
@@ -277,5 +299,37 @@ public class VRActivity extends AppCompatActivity {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public void spellCast(boolean me, String spellName) {
+        if (me) {
+
+            Material color = getAttackColor(spellName);
+
+            if (color != null) {
+                showSpellAtLastTappedAnchor(color);
+            }
+//            else {`
+            // TODO defensive spell
+//            }
+        } else {
+            Log.d("spell", "showing damage");
+
+            runOnUiThread(() -> {
+                health--;
+                updateHealthBar();
+
+                showDamageOverlay();
+            });
+        }
+    }
+
+    public Material getAttackColor(String spell) {
+        Resources res = WizardApp.getAppContext().getResources();
+        if (spell.equals(res.getStringArray(R.array.fire_atk)[1])) return colorRed;
+        if (spell.equals(res.getStringArray(R.array.water_atk)[1])) return colorBlue;
+        if (spell.equals(res.getStringArray(R.array.plant_atk)[1])) return colorGreen;
+        return null;
     }
 }
