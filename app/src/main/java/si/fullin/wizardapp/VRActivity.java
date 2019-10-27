@@ -394,7 +394,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         if (moving) {
             movingSpell(anchorNode, resource, amICaster, callback);
         } else {
-            staticSpell(anchorNode, resource, callback);
+            staticSpell(anchorNode, resource, amICaster, callback);
         }
     }
 
