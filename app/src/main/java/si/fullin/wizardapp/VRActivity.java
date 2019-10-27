@@ -184,17 +184,10 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         }, 15);
     }
 
-    void showSpellAtLastTappedAnchor(Material color) {
-        if (lastTappedAnchorNode == null)
-            return;
-
-        AnchorNode anchorNode = new AnchorNode(lastTappedAnchorNode);
-
-        runOnUiThread(() -> anchorNode.setParent(arFragment.getArSceneView().getScene()));
-
+    void movingSpell(AnchorNode anchorNode, int resource, boolean me) {
         final Renderable[] renderable = new Renderable[1];
         ModelRenderable.builder()
-                .setSource(this, R.raw.arzeninball)
+                .setSource(this, resource)
                 .build()
                 .thenAccept(r -> renderable[0] = r)
                 .exceptionally(throwable -> null);
@@ -208,7 +201,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         float dz = objectPose.tz() - cameraPose.tz();
 
         ///Compute the straight-line distance.
-        float distanceMeters = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        float distanceMeters = (float) Math.sqrt(dx * dx + dy * dy + dz * dz) * (me ? 1f : -1f);
 
         Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
@@ -229,7 +222,6 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                         arFragment.getArSceneView().getScene().removeChild(anchorNode);
                     } else {
 
-                        float radius = (float) stepsRemaining / ALL_STEPS * 0.3f;
                         float distance = distanceMeters * ((float) stepsRemaining / ALL_STEPS);
 
 
@@ -259,6 +251,74 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                     handler.postDelayed(this, 40);
             }
         }, 0);
+    }
+
+    void staticSpell(AnchorNode anchorNode, int resource, boolean me) {
+        final Renderable[] renderable = new Renderable[1];
+        ModelRenderable.builder()
+                .setSource(this, resource)
+                .build()
+                .thenAccept(r -> renderable[0] = r)
+                .exceptionally(throwable -> null);
+
+        Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            final int ALL_STEPS = 20;
+            int stepsRemaining = ALL_STEPS;
+            TransformableNode sphere = null;
+
+            @Override
+            public void run() {
+                stepsRemaining--;
+
+                VRActivity.this.runOnUiThread(() -> {
+                    if (sphere != null) {
+                        anchorNode.removeChild(sphere);
+                    }
+
+                    if (stepsRemaining == 0) {
+                        arFragment.getArSceneView().getScene().removeChild(anchorNode);
+                    } else {
+
+                        //Renderable renderable = ShapeFactory.makeSphere(radius, new Vector3(0.0f, 0.5f, 0.0f), color);
+                        sphere = new TransformableNode(arFragment.getTransformationSystem());
+                        sphere.getScaleController().setMaxScale(0.45f);
+                        sphere.getScaleController().setMinScale(0.4f);
+                        /*Vector3 vector3 = sphere.getWorldPosition();
+                        Quaternion rotation = sphere.getWorldRotation();
+                        rotation.y = 180;
+                        vector3.z = (distance)-1;
+                        vector3.y = 0f;
+                        sphere.setWorldPosition(vector3);
+                        sphere.setWorldRotation(rotation);*/
+                        sphere.setParent(anchorNode);
+                        //sphere.setRenderable(renderable);
+                        sphere.setRenderable(renderable[0]);
+                        sphere.select();
+
+
+                    }
+                });
+
+                if (stepsRemaining > 0)
+                    handler.postDelayed(this, 40);
+            }
+        }, 0);
+    }
+
+    void shieldSpell(AnchorNode anchorNode, int resource, boolean me) {
+
+    }
+
+    void showSpellAtLastTappedAnchor(Material color) {
+        if (lastTappedAnchorNode == null)
+            return;
+
+        AnchorNode anchorNode = new AnchorNode(lastTappedAnchorNode);
+
+        runOnUiThread(() -> anchorNode.setParent(arFragment.getArSceneView().getScene()));
+
+        movingSpell(anchorNode, R.raw.arzeninball, true);
     }
 
     void updateHealthBar() {
