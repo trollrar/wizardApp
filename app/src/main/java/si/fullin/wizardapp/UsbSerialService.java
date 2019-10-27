@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import android.os.Process;
 
 public class UsbSerialService {
 
@@ -72,7 +73,15 @@ public class UsbSerialService {
                 public void onNewData(final byte[] data) {
                     callback.onDataReceived(data);
                 }
-            });
+
+            }){
+                @Override
+                public void run() {
+                    Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
+                    super.run();
+                }
+
+            };
             mExecutor.submit(mSerialIoManager);
         }
     }
@@ -117,7 +126,9 @@ public class UsbSerialService {
 
             try {
                 sPort.open(connection);
-                sPort.setParameters(9600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+                sPort.setParameters(9600, UsbSerialPort.DATABITS_8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+                sPort.setDTR(true);
+                sPort.setRTS(true);
             } catch (IOException e) {
                 Log.e(TAG, "Error setting up device: " + e.getMessage(), e);
                 toast("Error opening device: " + e.getMessage());
