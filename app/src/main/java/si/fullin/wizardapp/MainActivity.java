@@ -3,20 +3,18 @@ package si.fullin.wizardapp;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
-public class MainActivity extends AppCompatActivity implements WandService.OnSpellCast {
+public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "mainactivity";
 
     ApiService apiService = new ApiService();
     SpeechService speechService;
-    WandService wandService;
 
     @BindView(R.id.textViewMain)
     TextView textViewMain;
@@ -30,20 +28,17 @@ public class MainActivity extends AppCompatActivity implements WandService.OnSpe
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
-        wandService = new WandService(this, this, false);
         speechService = new SpeechService(this);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        wandService.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        wandService.onResume();
     }
 
     @OnClick(R.id.ButtonPost)
@@ -65,10 +60,5 @@ public class MainActivity extends AppCompatActivity implements WandService.OnSpe
     @OnClick(R.id.buttonVR)
     public void openVr(View view) {
         startActivity(new Intent(this, VRActivity.class));
-    }
-
-    @Override
-    public void spellCast(boolean me, String spellName) {
-
     }
 }

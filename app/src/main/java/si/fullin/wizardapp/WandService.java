@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.res.Resources;
 import android.os.Handler;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -73,6 +74,7 @@ public class WandService implements UsbSerialService.OnDataRecieved {
     private String spellName = "Failed";
 
     boolean firstTimeSpell = true;
+
     @Override
     public void onDataReceived(byte[] data) {
         currentStream = data;
@@ -108,20 +110,16 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                     logging = true;
                     measurments.clear();
 
-                    if(firstTimeSpell) {
+                    if (firstTimeSpell) {
                         firstTimeSpell = false;
-                        spellName = "Failed";
                         speechService.listenForSpell(spellName -> {
                             this.spellName = spellName;
+                            if(spellName != null)
+                                onSpellCastListener.spellStatus(SpellResult.SPEECH_RECOGNISED);
                         });
 
-                        activity.runOnUiThread(() ->
-                                {
-                                    TextView viewById = (TextView) activity.findViewById(R.id.textViewMain);
-                                    viewById.setText("Listening....");
-
-                                }
-                        );
+                        onSpellCastListener.spellStatus(SpellResult.START);
+                        toast("listening...");
                     }
 
                 }
@@ -156,71 +154,60 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                     logging = false;
 
 
-
-                    activity.runOnUiThread(() ->
-                            {
+                    activity.runOnUiThread(() -> {
                                 Resources res = activity.getResources();
-                                if(spellName.equals(res.getStringArray(R.array.fire_moving)[0])) {
-                                    if (measurments.stream().anyMatch(x->x.x>13000)
-                                        &&measurments.stream().allMatch(y->y.y<13000)) {
-                                        TextView viewById = activity.findViewById(R.id.textViewMain);
-                                        viewById.setText(spellName);
-                                        onSpellCastListener.spellCast(true, spellName);
-                                    } else {
-                                        TextView viewById = activity.findViewById(R.id.textViewMain);
-                                        viewById.setText("Wrong Gesture");
-
-                                    }
-
-
-                                } else  if(spellName.equals(res.getStringArray(R.array.water_static)[0])) {
-                                    if (measurments.stream().anyMatch(x->x.y>13000)
-                                        &&measurments.stream().allMatch(y->y.x<13000)) {
-                                        TextView viewById = activity.findViewById(R.id.textViewMain);
-                                        viewById.setText(spellName);
-                                        onSpellCastListener.spellCast(true, spellName);
-                                    }else {
-                                        TextView viewById = activity.findViewById(R.id.textViewMain);
-                                        viewById.setText("Wrong Gesture");
-                                    }
-
-
-                                } else if(spellName.equals(res.getStringArray(R.array.plant_moving)[0])) {
-                                    if (measurments.stream().anyMatch(x -> x.y > 13000)
-                                            && measurments.stream().anyMatch(y -> y.x > 13000)) {
-                                        TextView viewById = activity.findViewById(R.id.textViewMain);
-                                        viewById.setText(spellName);
-                                        onSpellCastListener.spellCast(true, spellName);
-                                    }else {
-                                        TextView viewById = activity.findViewById(R.id.textViewMain);
-                                        viewById.setText("Wrong Gesture");
-                                    }
+                                if (spellName == null) {
+                                    onSpellCastListener.spellStatus(SpellResult.SPEECH_FAILED);
                                 } else {
-                                    TextView viewById = (TextView) activity.findViewById(R.id.textViewMain);
-                                    viewById.setText(spellName);
-                                    onSpellCastListener.spellCast(true, spellName);
+                                    if (spellName.equals(res.getStringArray(R.array.fire_moving)[0])) {
+                                        if (measurments.stream().anyMatch(x -> x.x > 13000)
+                                                && measurments.stream().allMatch(y -> y.y < 13000)) {
+                                            onSpellCastListener.spellCast(true, spellName);
+                                        } else {
+                                            onSpellCastListener.spellStatus(SpellResult.WAND_FAILED);
+                                        }
+
+
+                                    } else if (spellName.equals(res.getStringArray(R.array.water_static)[0])) {
+                                        if (measurments.stream().anyMatch(x -> x.y > 13000)
+                                                && measurments.stream().allMatch(y -> y.x < 13000)) {
+                                            onSpellCastListener.spellCast(true, spellName);
+                                        } else {
+                                            onSpellCastListener.spellStatus(SpellResult.WAND_FAILED);
+                                        }
+
+
+                                    } else if (spellName.equals(res.getStringArray(R.array.plant_moving)[0])) {
+                                        if (measurments.stream().anyMatch(x -> x.y > 13000)
+                                                && measurments.stream().anyMatch(y -> y.x > 13000)) {
+                                            onSpellCastListener.spellCast(true, spellName);
+                                        } else {
+                                            onSpellCastListener.spellStatus(SpellResult.WAND_FAILED);
+                                        }
+                                    } else {
+                                        onSpellCastListener.spellCast(true, spellName);
+                                        toast("spell checking not implemented");
+                                    }
                                 }
-                                spellName = "Failed";
+                                spellName = null;
                                 measurments = new ArrayList<>();
                             }
                     );
 
                 }
             }
-
-
-
-
         }
-
-        //activity.runOnUiThread(() ->
-        //        Toast.makeText(activity, new String(data), Toast.LENGTH_SHORT).show()
-        //);
-
     }
+
+    private void toast(String text) {
+        activity.runOnUiThread(() -> Toast.makeText(activity, text, Toast.LENGTH_SHORT).show());
+    }
+
 
     interface OnSpellCast {
         void spellCast(boolean me, String spellName);
+
+        void spellStatus(SpellResult result);
     }
 
     private class Measurment {
@@ -235,7 +222,6 @@ public class WandService implements UsbSerialService.OnDataRecieved {
         }
 
 
-
         @Override
         public String toString() {
             return "{" +
@@ -244,5 +230,9 @@ public class WandService implements UsbSerialService.OnDataRecieved {
                     ", z=" + z +
                     '}';
         }
+    }
+
+    public enum SpellResult {
+        WAND_FAILED, SPEECH_FAILED, START, SPEECH_RECOGNISED
     }
 }

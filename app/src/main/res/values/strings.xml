@@ -1,7 +1,5 @@
 <resources>
     <string name="app_name">wizardApp</string>
-    <string name="spell_wand_failed">wand_failed</string>
-    <string name="spell_speech_failed">speech_failed</string>
 
     <string-array name="fire_moving">
         <item>ferociousflames</item>
