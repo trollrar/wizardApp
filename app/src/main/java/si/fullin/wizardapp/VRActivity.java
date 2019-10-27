@@ -219,7 +219,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
 
                     if (stepsRemaining == 0) {
                         arFragment.getArSceneView().getScene().removeChild(anchorNode);
-                        if(callback != null) callback.run();
+                        if (callback != null) callback.run();
                     } else {
 
                         float distance = distanceMeters * ((float) stepsRemaining / ALL_STEPS);
@@ -442,19 +442,6 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
     public void spellCast(boolean amICaster, String spellName) {
         Resources res = WizardApp.getAppContext().getResources();
 
-        if (spellName.equals(getString(R.string.spell_wand_failed))) {
-            findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_red_dark);
-            findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_red_dark);
-            return;
-        } else if (spellName.equals(getString(R.string.spell_speech_failed))) {
-            findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_orange_dark);
-            findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_orange_dark);
-            return;
-        } else {
-            findViewById(R.id.status2).setBackgroundResource(android.R.color.transparent);
-            findViewById(R.id.status1).setBackgroundResource(android.R.color.transparent);
-        }
-
         // Ferocious Flames      red     moving
         // Sulfurous Smoke       red     static
         // Wrath of Waterfall    blue    moving
@@ -481,6 +468,34 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
 
             });
         });
+    }
+
+    @Override
+    public void spellStatus(WandService.SpellResult result) {
+        if (result == null) result = WandService.SpellResult.START;
+
+        switch (result) {
+            case START:
+                findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_purple);
+                findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_purple);
+                break;
+
+            case SPEECH_RECOGNISED:
+                findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_blue_dark);
+                findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_blue_dark);
+                break;
+
+            case WAND_FAILED:
+                findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_red_dark);
+                findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_red_dark);
+                return;
+
+            case SPEECH_FAILED:
+                findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_orange_dark);
+                findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_orange_dark);
+                return;
+        }
+
     }
 
     interface Callback {

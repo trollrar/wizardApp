@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.res.Resources;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
+import android.widget.Toast;
 import com.microsoft.cognitiveservices.speech.*;
 import com.microsoft.cognitiveservices.speech.audio.AudioConfig;
 
@@ -79,7 +80,7 @@ public class SpeechService {
         }
     }
 
-    private static String getSpellName(String query) {
+    private String getSpellName(String query) {
         ArrayList<String[]> spellTypes = new ArrayList<>();
         Resources res = WizardApp.getAppContext().getResources();
         spellTypes.add(res.getStringArray(R.array.fire_moving));
@@ -91,12 +92,13 @@ public class SpeechService {
 
         String normalize = query.toLowerCase().replaceAll("( |[.])", "");
         for (String[] spellType : spellTypes) {
-            for (int i = 1; i < spellType.length; i++) {
-                if (spellType[i].equals(normalize)) {
+            for (String s : spellType) {
+                if (s.equals(normalize)) {
                     return spellType[0];
                 }
             }
         }
+        activity.runOnUiThread(() -> Toast.makeText(activity, "heard: " + normalize, Toast.LENGTH_SHORT).show());
         return null;
     }
 
