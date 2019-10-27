@@ -232,7 +232,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                         Vector3 vector3 = sphere.getWorldPosition();
                         Quaternion rotation = sphere.getWorldRotation();
                         rotation.y = 180;
-                        vector3.z = (distance) - 1;
+                        vector3.z = (distance) - (amICaster ? -1f : -0.1f);
                         vector3.y = 0.4f;
                         sphere.setWorldPosition(vector3);
                         sphere.setWorldRotation(rotation);
@@ -253,13 +253,85 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         }, 0);
     }
 
-    void staticSpell(AnchorNode anchorNode, int resource, Callback callback) {
+    void staticSpell(AnchorNode anchorNode, int resource, boolean amICaster, Callback callback) {
+        if (amICaster) {
+            final Renderable[] renderable = new Renderable[1];
+            ModelRenderable.builder()
+                    .setSource(this, resource)
+                    .build()
+                    .thenAccept(r -> renderable[0] = r)
+                    .exceptionally(throwable -> null);
+
+            Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                final int ALL_STEPS = 20;
+                int stepsRemaining = ALL_STEPS;
+                TransformableNode sphere = null;
+
+                @Override
+                public void run() {
+                    stepsRemaining--;
+
+                    VRActivity.this.runOnUiThread(() -> {
+                        if (sphere != null) {
+                            anchorNode.removeChild(sphere);
+                        }
+
+                        if (stepsRemaining == 0) {
+                            arFragment.getArSceneView().getScene().removeChild(anchorNode);
+                            if (callback != null) callback.run();
+                        } else {
+
+
+                            float size = (0.3f * ((float) (ALL_STEPS - stepsRemaining) / ALL_STEPS)) + 0.1f;
+
+                            //Renderable renderable = ShapeFactory.makeSphere(radius, new Vector3(0.0f, 0.5f, 0.0f), color);
+                            sphere = new TransformableNode(arFragment.getTransformationSystem());
+                            sphere.getScaleController().setMaxScale(size + 0.05f);
+                            sphere.getScaleController().setMinScale(size);
+                        /*Vector3 vector3 = sphere.getWorldPosition();
+                        Quaternion rotation = sphere.getWorldRotation();
+                        rotation.y = 180;
+                        vector3.z = (distance)-1;
+                        vector3.y = 0f;
+                        sphere.setWorldPosition(vector3);
+                        sphere.setWorldRotation(rotation);*/
+                            sphere.setParent(anchorNode);
+                            //sphere.setRenderable(renderable);
+                            sphere.setRenderable(renderable[0]);
+                            sphere.select();
+
+
+                        }
+                    });
+
+                    if (stepsRemaining > 0)
+                        handler.postDelayed(this, 40);
+                }
+            }, 0);
+        } else {
+
+        }
+    }
+
+    void shieldSpell(AnchorNode anchorNode, int resource, boolean me) {
         final Renderable[] renderable = new Renderable[1];
         ModelRenderable.builder()
                 .setSource(this, resource)
                 .build()
                 .thenAccept(r -> renderable[0] = r)
                 .exceptionally(throwable -> null);
+
+        Frame frame = arFragment.getArSceneView().getArFrame();
+        Pose objectPose = lastTappedAnchorNode.getPose();
+        Pose cameraPose = frame.getCamera().getPose();
+
+        float dx = objectPose.tx() - cameraPose.tx();
+        float dy = objectPose.ty() - cameraPose.ty();
+        float dz = objectPose.tz() - cameraPose.tz();
+
+        ///Compute the straight-line distance.
+        float distanceMeters = (float) Math.sqrt(dx * dx + dy * dy + dz * dz) * (me ? 1f : -1f);
 
         Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
@@ -278,20 +350,24 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
 
                     if (stepsRemaining == 0) {
                         arFragment.getArSceneView().getScene().removeChild(anchorNode);
-                        if (callback != null) callback.run();
                     } else {
+
+                        float distance = distanceMeters * ((float) stepsRemaining / ALL_STEPS);
+
 
                         //Renderable renderable = ShapeFactory.makeSphere(radius, new Vector3(0.0f, 0.5f, 0.0f), color);
                         sphere = new TransformableNode(arFragment.getTransformationSystem());
-                        sphere.getScaleController().setMaxScale(0.45f);
-                        sphere.getScaleController().setMinScale(0.4f);
-                        /*Vector3 vector3 = sphere.getWorldPosition();
+                        sphere.getScaleController().setMaxScale(0.25f);
+                        sphere.getScaleController().setMinScale(0.2f);
+                        Vector3 vector3 = sphere.getWorldPosition();
                         Quaternion rotation = sphere.getWorldRotation();
                         rotation.y = 180;
-                        vector3.z = (distance)-1;
-                        vector3.y = 0f;
+                        vector3.z = distance-0.3f;
+                        vector3.y = 0.4f;
                         sphere.setWorldPosition(vector3);
-                        sphere.setWorldRotation(rotation);*/
+                        sphere.setWorldRotation(rotation);
+                        Log.i(TAG, String.valueOf(rotation.y));
+                        Log.i(TAG, String.valueOf(vector3.z));
                         sphere.setParent(anchorNode);
                         //sphere.setRenderable(renderable);
                         sphere.setRenderable(renderable[0]);
