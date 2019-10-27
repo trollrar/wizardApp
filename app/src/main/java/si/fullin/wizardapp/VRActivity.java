@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.*;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.ArCoreApk;
@@ -62,6 +63,16 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         }
 
         setContentView(R.layout.activity_vr);
+
+        LinearLayout vrLayout = findViewById(R.id.vr_layout);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+
+        params.setMargins(90, 0, 90, 0);
+        //vrLayout.setLayoutParams(params);
 
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ar_fragment);
         imageView = this.findViewById(R.id.myimage);
@@ -454,10 +465,32 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                 spellName.equals(res.getStringArray(R.array.plant_moving)[0]);
 
         runOnUiThread(() -> {
-            showSpellAtLastTappedAnchor(R.raw.arzeninball, moving, amICaster, () -> {
+            int resource = 0;
+
+            switch (spellName) {
+                case "Ferocious Flames" :
+                    resource = R.id.arzeninball;
+                    break;
+                case "Sulfurous Smoke" :
+                    resource = R.id.drek;
+                    break;
+                case "Wrath of Waterfall" :
+                    resource = R.id.pizza;
+                    break;
+                case "Mysterious Mist" :
+                    resource = R.id.somestuff;
+                    break;
+                case "Revengefull Roses" :
+                    resource = R.id.drek;
+                    break;
+                case "Fierce Forest" :
+                    resource = R.id.grdatla;
+                    break;
+            }
+
+            showSpellAtLastTappedAnchor(resource, moving, amICaster, () -> {
 
                 if (!amICaster) {
-
                     runOnUiThread(() -> {
                         health--;
                         updateHealthBar();
@@ -467,6 +500,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                 }
 
             });
+
         });
     }
 
