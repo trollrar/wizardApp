@@ -1,33 +1,30 @@
 <resources>
     <string name="app_name">wizardApp</string>
-    <string-array name="fire_atk">
-        <item>Ferocious Flames</item>
+    <string name="spell_wand_failed">wand_failed</string>
+    <string name="spell_speech_failed">speech_failed</string>
+
+    <string-array name="fire_moving">
         <item>ferociousflames</item>
     </string-array>
-    <string-array name="fire_def">
-        <item>Sulfurous Smoke</item>
+    <string-array name="fire_static">
         <item>sulfuroussmoke</item>
         <item>soforasmoke</item>
     </string-array>
-    <string-array name="water_atk">
-        <item>Wrath of Waterfall</item>
+    <string-array name="water_moving">
         <item>wrathofwaterfall</item>
         <item>roughofwaterfall</item>
         <item>graphofwaterfall</item>
         <item>refofwaterfall</item>
         <item>graphofwaterfall</item>
     </string-array>
-    <string-array name="water_def">
-        <item>Mysterious Mist</item>
+    <string-array name="water_static">
         <item>mysteriousmist</item>
         <item>mysteriousmissed</item>
     </string-array>
-    <string-array name="plant_atk">
-        <item>Revengefull Roses</item>
+    <string-array name="plant_moving">
         <item>revengefullroses</item>
     </string-array>
-    <string-array name="plant_def">
-        <item>Fierce Forest</item>
+    <string-array name="plant_static">
         <item>fierceforest</item>
     </string-array>
 </resources>

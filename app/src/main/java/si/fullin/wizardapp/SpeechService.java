@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.res.Resources;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
-import android.widget.TextView;
 import com.microsoft.cognitiveservices.speech.*;
 import com.microsoft.cognitiveservices.speech.audio.AudioConfig;
 
@@ -83,12 +82,12 @@ public class SpeechService {
     private static String getSpellName(String query) {
         ArrayList<String[]> spellTypes = new ArrayList<>();
         Resources res = WizardApp.getAppContext().getResources();
-        spellTypes.add(res.getStringArray(R.array.fire_atk));
-        spellTypes.add(res.getStringArray(R.array.fire_def));
-        spellTypes.add(res.getStringArray(R.array.water_atk));
-        spellTypes.add(res.getStringArray(R.array.water_def));
-        spellTypes.add(res.getStringArray(R.array.plant_atk));
-        spellTypes.add(res.getStringArray(R.array.plant_def));
+        spellTypes.add(res.getStringArray(R.array.fire_moving));
+        spellTypes.add(res.getStringArray(R.array.fire_static));
+        spellTypes.add(res.getStringArray(R.array.water_moving));
+        spellTypes.add(res.getStringArray(R.array.water_static));
+        spellTypes.add(res.getStringArray(R.array.plant_moving));
+        spellTypes.add(res.getStringArray(R.array.plant_static));
 
         String normalize = query.toLowerCase().replaceAll("( |[.])", "");
         for (String[] spellType : spellTypes) {
@@ -98,8 +97,7 @@ public class SpeechService {
                 }
             }
         }
-        Log.i(TAG, query);
-        return "You are nothing but a filthy muggle!";
+        return null;
     }
 
     private <T> void setOnTaskCompletedListener(Future<T> task, SpeechService.OnTaskCompletedListener<T> listener) {

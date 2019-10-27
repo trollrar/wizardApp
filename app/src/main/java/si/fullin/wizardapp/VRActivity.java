@@ -21,7 +21,6 @@ import com.google.ar.core.Plane;
 import com.google.ar.core.Pose;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.math.Quaternion;
-import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.*;
 import com.google.ar.sceneform.ux.ArFragment;
@@ -91,8 +90,6 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                 handler.postDelayed(this, 42);
             }
         }, 2000);
-
-        new Handler().postDelayed(() -> showSpellAtLastTappedAnchor(colorGreen), 10000);
     }
 
     @Override
@@ -101,10 +98,11 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         wandService.onResume();
 
         Map<String, Integer> initialScene = new HashMap<>();
-        initialScene.put("d9b2a566-bb12-42e7-8063-d84144871e66", R.raw.andy);
-        initialScene.put("9fad35d2-560f-4f93-8259-5d54f6bb2858", R.raw.dragon);
-        initialScene.put("b01fd3a5-e420-4cb1-baef-ac6086f004e9", R.raw.pumpkin);
-        initialScene.put("2b1e6c9e-ba66-4d0f-89ec-6f9a3beb7352", R.raw.pumpkin);
+        initialScene.put("01e6d8ad-665f-429a-989e-f837331f5b46", R.raw.pumpkin);
+        initialScene.put("172150e8-6305-43a4-8a31-6a9a40426fc2", R.raw.pumpkin);
+        initialScene.put("ed8ee00b-6efd-4971-9aed-9bd24987ea7f", R.raw.dragon);
+        initialScene.put("f1d4144f-e0f8-4622-847b-1a6b709b56f1", R.raw.andy);
+        initialScene.put("9fb68a63-c511-486d-a93b-cd96d21fef5e", R.raw.pumpkin);
 
         sceneLoader.locateObjects(initialScene);
     }
@@ -146,7 +144,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                 (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
                     lastTappedAnchorNode = hitResult.createAnchor();
 
-                    showSpellAtLastTappedAnchor(colorGreen);
+                    showSpellAtLastTappedAnchor(R.raw.pumpkin, false, true, null);
                 });
     }
 
@@ -184,7 +182,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         }, 15);
     }
 
-    void movingSpell(AnchorNode anchorNode, int resource, boolean me) {
+    void movingSpell(AnchorNode anchorNode, int resource, boolean amICaster, Callback callback) {
         final Renderable[] renderable = new Renderable[1];
         ModelRenderable.builder()
                 .setSource(this, resource)
@@ -193,6 +191,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                 .exceptionally(throwable -> null);
 
         Frame frame = arFragment.getArSceneView().getArFrame();
+        if (frame == null) return;
         Pose objectPose = lastTappedAnchorNode.getPose();
         Pose cameraPose = frame.getCamera().getPose();
 
@@ -201,7 +200,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         float dz = objectPose.tz() - cameraPose.tz();
 
         ///Compute the straight-line distance.
-        float distanceMeters = (float) Math.sqrt(dx * dx + dy * dy + dz * dz) * (me ? 1f : -1f);
+        float distanceMeters = (float) Math.sqrt(dx * dx + dy * dy + dz * dz) * (amICaster ? 1f : -1f);
 
         Handler handler = new Handler();
         handler.postDelayed(new Runnable() {
@@ -220,6 +219,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
 
                     if (stepsRemaining == 0) {
                         arFragment.getArSceneView().getScene().removeChild(anchorNode);
+                        if(callback != null) callback.run();
                     } else {
 
                         float distance = distanceMeters * ((float) stepsRemaining / ALL_STEPS);
@@ -232,7 +232,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                         Vector3 vector3 = sphere.getWorldPosition();
                         Quaternion rotation = sphere.getWorldRotation();
                         rotation.y = 180;
-                        vector3.z = (distance)-1;
+                        vector3.z = (distance) - (amICaster ? -1f : -0.1f);
                         vector3.y = 0.4f;
                         sphere.setWorldPosition(vector3);
                         sphere.setWorldRotation(rotation);
@@ -253,37 +253,42 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         }, 0);
     }
 
-    void staticSpell(AnchorNode anchorNode, int resource, boolean me) {
-        final Renderable[] renderable = new Renderable[1];
-        ModelRenderable.builder()
-                .setSource(this, resource)
-                .build()
-                .thenAccept(r -> renderable[0] = r)
-                .exceptionally(throwable -> null);
+    void staticSpell(AnchorNode anchorNode, int resource, boolean amICaster, Callback callback) {
+        if (amICaster) {
+            final Renderable[] renderable = new Renderable[1];
+            ModelRenderable.builder()
+                    .setSource(this, resource)
+                    .build()
+                    .thenAccept(r -> renderable[0] = r)
+                    .exceptionally(throwable -> null);
 
-        Handler handler = new Handler();
-        handler.postDelayed(new Runnable() {
-            final int ALL_STEPS = 20;
-            int stepsRemaining = ALL_STEPS;
-            TransformableNode sphere = null;
+            Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                final int ALL_STEPS = 20;
+                int stepsRemaining = ALL_STEPS;
+                TransformableNode sphere = null;
 
-            @Override
-            public void run() {
-                stepsRemaining--;
+                @Override
+                public void run() {
+                    stepsRemaining--;
 
-                VRActivity.this.runOnUiThread(() -> {
-                    if (sphere != null) {
-                        anchorNode.removeChild(sphere);
-                    }
+                    VRActivity.this.runOnUiThread(() -> {
+                        if (sphere != null) {
+                            anchorNode.removeChild(sphere);
+                        }
 
-                    if (stepsRemaining == 0) {
-                        arFragment.getArSceneView().getScene().removeChild(anchorNode);
-                    } else {
+                        if (stepsRemaining == 0) {
+                            arFragment.getArSceneView().getScene().removeChild(anchorNode);
+                            if (callback != null) callback.run();
+                        } else {
 
-                        //Renderable renderable = ShapeFactory.makeSphere(radius, new Vector3(0.0f, 0.5f, 0.0f), color);
-                        sphere = new TransformableNode(arFragment.getTransformationSystem());
-                        sphere.getScaleController().setMaxScale(0.45f);
-                        sphere.getScaleController().setMinScale(0.4f);
+
+                            float size = (0.3f * ((float) (ALL_STEPS - stepsRemaining) / ALL_STEPS)) + 0.1f;
+
+                            //Renderable renderable = ShapeFactory.makeSphere(radius, new Vector3(0.0f, 0.5f, 0.0f), color);
+                            sphere = new TransformableNode(arFragment.getTransformationSystem());
+                            sphere.getScaleController().setMaxScale(size + 0.05f);
+                            sphere.getScaleController().setMinScale(size);
                         /*Vector3 vector3 = sphere.getWorldPosition();
                         Quaternion rotation = sphere.getWorldRotation();
                         rotation.y = 180;
@@ -291,19 +296,22 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                         vector3.y = 0f;
                         sphere.setWorldPosition(vector3);
                         sphere.setWorldRotation(rotation);*/
-                        sphere.setParent(anchorNode);
-                        //sphere.setRenderable(renderable);
-                        sphere.setRenderable(renderable[0]);
-                        sphere.select();
+                            sphere.setParent(anchorNode);
+                            //sphere.setRenderable(renderable);
+                            sphere.setRenderable(renderable[0]);
+                            sphere.select();
 
 
-                    }
-                });
+                        }
+                    });
 
-                if (stepsRemaining > 0)
-                    handler.postDelayed(this, 40);
-            }
-        }, 0);
+                    if (stepsRemaining > 0)
+                        handler.postDelayed(this, 40);
+                }
+            }, 0);
+        } else {
+
+        }
     }
 
     void shieldSpell(AnchorNode anchorNode, int resource, boolean me) {
@@ -354,7 +362,7 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
                         Vector3 vector3 = sphere.getWorldPosition();
                         Quaternion rotation = sphere.getWorldRotation();
                         rotation.y = 180;
-                        vector3.z = (distance)-1;
+                        vector3.z = distance-0.3f;
                         vector3.y = 0.4f;
                         sphere.setWorldPosition(vector3);
                         sphere.setWorldRotation(rotation);
@@ -375,15 +383,19 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
         }, 0);
     }
 
-    void showSpellAtLastTappedAnchor(Material color) {
+    void showSpellAtLastTappedAnchor(int resource, boolean moving, boolean amICaster, Callback callback) {
         if (lastTappedAnchorNode == null)
             return;
 
         AnchorNode anchorNode = new AnchorNode(lastTappedAnchorNode);
 
-        runOnUiThread(() -> anchorNode.setParent(arFragment.getArSceneView().getScene()));
+        anchorNode.setParent(arFragment.getArSceneView().getScene());
 
-        movingSpell(anchorNode, R.raw.arzeninball, true);
+        if (moving) {
+            movingSpell(anchorNode, resource, amICaster, callback);
+        } else {
+            staticSpell(anchorNode, resource, callback);
+        }
     }
 
     void updateHealthBar() {
@@ -427,34 +439,51 @@ public class VRActivity extends AppCompatActivity implements WandService.OnSpell
     }
 
     @Override
-    public void spellCast(boolean me, String spellName) {
-        if (me) {
+    public void spellCast(boolean amICaster, String spellName) {
+        Resources res = WizardApp.getAppContext().getResources();
 
-            Material color = getAttackColor(spellName);
-
-            if (color != null) {
-                showSpellAtLastTappedAnchor(color);
-            }
-//            else {`
-            // TODO defensive spell
-//            }
+        if (spellName.equals(getString(R.string.spell_wand_failed))) {
+            findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_red_dark);
+            findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_red_dark);
+            return;
+        } else if (spellName.equals(getString(R.string.spell_speech_failed))) {
+            findViewById(R.id.status2).setBackgroundResource(android.R.color.holo_orange_dark);
+            findViewById(R.id.status1).setBackgroundResource(android.R.color.holo_orange_dark);
+            return;
         } else {
-            Log.d("spell", "showing damage");
-
-            runOnUiThread(() -> {
-                health--;
-                updateHealthBar();
-
-                showDamageOverlay();
-            });
+            findViewById(R.id.status2).setBackgroundResource(android.R.color.transparent);
+            findViewById(R.id.status1).setBackgroundResource(android.R.color.transparent);
         }
+
+        // Ferocious Flames      red     moving
+        // Sulfurous Smoke       red     static
+        // Wrath of Waterfall    blue    moving
+        // Mysterious Mist       blue    static
+        // Revengefull Roses     green   moving
+        // Fierce Forest         green   static
+
+        boolean moving = spellName.equals(res.getStringArray(R.array.fire_moving)[0]) ||
+                spellName.equals(res.getStringArray(R.array.water_moving)[0]) ||
+                spellName.equals(res.getStringArray(R.array.plant_moving)[0]);
+
+        runOnUiThread(() -> {
+            showSpellAtLastTappedAnchor(R.raw.arzeninball, moving, amICaster, () -> {
+
+                if (!amICaster) {
+
+                    runOnUiThread(() -> {
+                        health--;
+                        updateHealthBar();
+
+                        showDamageOverlay();
+                    });
+                }
+
+            });
+        });
     }
 
-    public Material getAttackColor(String spell) {
-        Resources res = WizardApp.getAppContext().getResources();
-        if (spell.equals(res.getStringArray(R.array.fire_atk)[1])) return colorRed;
-        if (spell.equals(res.getStringArray(R.array.water_atk)[1])) return colorBlue;
-        if (spell.equals(res.getStringArray(R.array.plant_atk)[1])) return colorGreen;
-        return null;
+    interface Callback {
+        void run();
     }
 }

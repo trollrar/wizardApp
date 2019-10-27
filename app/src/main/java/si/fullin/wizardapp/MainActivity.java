@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity implements WandService.OnSpe
         view.setText("...");
 
         speechService.listenForSpell(spellName -> runOnUiThread(() -> {
-            view.setText(spellName);
+            view.setText(spellName == null ? "You muggle!" : spellName);
         }));
 
     }
